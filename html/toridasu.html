@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Toridasu</title>
+  <meta name="description" content="Extracts articles from NHK Easy News for readability">
+  <meta name="author" content="Scott Oglesby; kurumi.com">
+<style type="text/css">
+/* Eric Meyer reset;  http://meyerweb.com/eric/thoughts/2007/05/01/reset-reloaded/ */
+html, body, div, span, applet, object, iframe,
+h1, h2, h3, h4, h5, h6, p, blockquote, pre,
+a, abbr, acronym, address, big, cite, code,
+del, dfn, em, font, img, ins, kbd, q, s, samp,
+small, strike, strong, sub, sup, tt, var,
+dl, dt, dd, ol, ul, li,
+fieldset, form, label, legend,
+table, caption, tbody, tfoot, thead, tr, th, td {
+	margin: 0;
+	padding: 0;
+	border: 0;
+	outline: 0;
+	font-weight: inherit;
+	font-style: inherit;
+	font-size: 100%;
+	font-family: helvetica, arial, sans-serif;
+	vertical-align: baseline;
+}
+h1 {
+	font-size: 2em;
+	font-weight: bold;
+	text-align: center;
+	padding-top: 1em;
+}
+p.explanation {
+	text-align: center;
+    padding: 1em;
+}
+/* all table cells should be top- and left-aligned */
+td, th {
+    padding: 0.5em 0.5em;
+}
+/* actual tabular data tables */
+table {
+    border-spacing: 0px;
+    border-collapse: collapse;
+    border: 1px solid #666;
+    margin-bottom: 1em;
+    margin-left: auto;
+    margin-right: auto;
+	font-family: sans-serif;
+}
+tr:nth-child(odd) {
+    background-color: #e6f3ff;
+}
+th {
+    background-color: #CCE6FF;
+    border-bottom: 1px solid #666;
+    font-weight: bold;
+
+    text-align: left;
+}
+td {
+    border-bottom: 1px solid #666;
+/*     border-right: 1px solid #666; */
+}
+
+/* button CSS from David Higgins, http://cssdeck.com/labs/google-buttons-2 */
+button, input.button {
+    color: #6e6e6e;
+    font: bold;
+    text-decoration: none;
+    padding: 7px 12px;
+    position: relative;
+    display: inline-block;
+    text-shadow: 0 1px 0 #fff;
+    transition: border-color .218s;
+    background: #f3f3f3;
+    background: -webkit-gradient(linear,0% 40%,0% 70%,from(#F5F5F5),to(#F1F1F1));
+    background: -moz-linear-gradient(linear,0% 40%,0% 70%,from(#F5F5F5),to(#F1F1F1));
+    border: solid 1px #dcdcdc;
+    border-radius: 2px;
+    margin-left: auto;
+    margin-right: auto;
+}
+button:hover, input.button:hover {
+    color: #333;
+    border-color: #999;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+button:active input.button:active {
+    color: #000;
+    border-color: #444;
+}
+</style>
+</head>
+
+<body>
+<script type="text/javascript">
+
+	/*
+		This client makes a lot of assumptions based on the way NHK Easy News
+		generates its pages. We are basically an alternate front end to the same
+		CMS their main page uses. Assumptions include:
+		* URL of recent article list
+		* format of the JSON at that URL
+		* NHK doesn't lock down access to any of this
+		* NHK's naming convention, linking article IDs to article URLs
+		* various class names and ID on NHK pages
+		
+		Fortunately, if they change much of this (which breaks us), they'll also
+		need to refactor their front end.
+	*/
+	
+	// TODO: for (var x of y) fails in Safari
+
+	// "const" is not widely supported yet
+	var maxArticlesToFetch = 60;
+	var articleCheckboxCssClass = "article";
+	var baseUrl = "http://www3.nhk.or.jp/news/easy/";
+
+	// using NHK-Easy's naming convention, construct the article's URL based on its ID
+	function getUrl(id) {
+		return baseUrl + id + "/" + id + ".html";
+	}
+
+  	// Given NHK's JSON article list, populate our table of links
+  	// each checkbox ID is NHK's news_id, from which we can reconstruct the URL
+	function populateArticleList(data) {
+		var news = data[0];
+		var dates = Object.keys(news);
+		var articleCount = 0;
+		for (var recentDate of dates) {
+			var stories = Object.keys(news[recentDate]);
+			for (var story of stories) {
+				if (articleCount > maxArticlesToFetch) {
+					break;
+				}
+				var article = news[recentDate][story];
+			
+				// construct link to article
+				var url = getUrl(article.news_id);
+				var a = document.createElement('a');
+				a.innerHTML = article.title_with_ruby;
+				a.title = article.title;
+				a.href = url;
+
+				// build table row
+				var tr = document.createElement("tr");
+				var tdCheck = document.createElement("td");
+				var cb = document.createElement('input');
+				cb.type = 'checkbox';
+				cb.id = article.news_id;
+				cb.className = articleCheckboxCssClass;
+				cb.checked = false;
+				tdCheck.appendChild(cb);
+				tr.appendChild(tdCheck);
+				var tdDate = document.createElement("td");
+				var label = document.createElement("label");
+				label.htmlFor = article.news_id;
+				label.appendChild(document.createTextNode(recentDate));
+				tdDate.appendChild(label);
+				tr.appendChild(tdDate);
+				var tdLink = document.createElement("td");
+				tdLink.appendChild(a);
+				tr.appendChild(tdLink);
+				document.getElementById("articles-body").appendChild(tr);
+
+				articleCount++;
+			}  
+		}
+	}
+
+	var getJSON = function(url, callback) {
+		var xhr = new XMLHttpRequest();
+		xhr.open("get", url, true);
+		xhr.responseType = "json";
+		xhr.onload = function() {
+		  var status = xhr.status;
+		  if (status == 200) {
+			callback(null, xhr.response);
+		  } else {
+			callback(status);
+		  }
+		};
+		xhr.send();
+	};
+	
+	// 
+	function buildPage(content) {
+		var header = 
+		'<!DOCTYPE HTML>' +
+		'<html xmlns="http://www.w3.org/1999/xhtml">' +
+		'<head>' +
+		'<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />' +
+		'<title>Articles from NHK Easy News</title>' +
+		'<meta name="description" content="Articles from NHK Easy News, formatted for offline readability" />' +
+		'<meta name="generator" content="toridasu.html; Scott Oglesby at kurumi.com" />' +
+		'<style type="text/css">' +
+		'.newsarticle, .newstitle { ' +
+		'	border: 1px solid gray;' +
+		'	padding: 16px;' +
+		'	margin-left: 10%;' +
+		'	margin-right: 10%;' +
+		'	line-height: 2em;' +
+		'}' +
+		'.newsarticle {' +
+		'	page-break-after: always;' +
+		'	margin-bottom: 2em;' +
+		'	font-family:"MS Mincho";' +
+		'	font-size:150%;' +
+		'	border-bottom-left-radius: 0.5em;' +
+		'	border-bottom-right-radius: 0.5em; ' +
+		'}' +
+		'.newstitle {' +
+		'	background: #eee;' +
+		'   font-family: Helvetica, Arial, sans-serif;' +
+		'	border-bottom: none;' +
+		'	border-top-left-radius: 0.5em;' +
+		'	border-top-right-radius: 0.5em;' +
+		'   padding-bottom: 0;' +
+		'}' +
+		'h2 {' +
+		'	margin-bottom: 0;' +
+		'	margin-top: 0;' +
+		'}' +
+		'.newstitle p {' +
+		'	margin-top: 0;' +
+		'	margin-bottom: 0;' +
+		'	padding: 0;' +
+		'}' +
+		'p { margin-top: 0; }' +
+		'</style>' +
+		'</head>' +
+		"<body>\n";
+		var footer = "</body>\n</html>";
+		return header + content + footer;
+	}
+	
+	// fetch the title and article from an NHK URL;
+	// clean up some tags we don't use;
+	// and package it into a pair of <div>'s we'll build a page with
+	function addArticle(url, thisIndex, selectionCount) {
+		var title = "";
+		var article = "";
+		var req = new XMLHttpRequest();  
+		req.open('GET', url, false);   
+		req.send(null);  
+		if(req.status == 200) {
+			var shellDoc = document.implementation.createHTMLDocument("example");
+			var content = req.responseText;
+			shellDoc.documentElement.innerHTML = content;
+			title = shellDoc.getElementById("newstitle").innerHTML;
+			// insert "article X of Y" at end of H2 for context
+			var xOfY = "";
+			if (selectionCount > 1) {
+				xOfY = " (" + thisIndex + " of " + selectionCount + ")";
+			}
+			title = title.replace(/<\/h2>/, xOfY + "</h2>");
+			// id="newsDate" isn't valid for multi-article pages (and we don't need it)
+			title = title.replace(/ id="newsDate"/g, "");
+			// credit and link to original article		
+			title += "<p>From NHK Easy News; link: <a href='" + url + "'>" + url + "</a></p>";
+			article = shellDoc.getElementById("newsarticle").innerHTML;
+			// remove <a> and </a> tags (we won't port those over)
+			article = article.replace(/<\/?a[^>]*>/g, "");
+		}
+		else {
+			title = "Error: " + req.status;
+			article = "Could not read article at " + url;
+		}
+		return "<div class='newstitle'>" + title + "</div>\n" +
+			"<div class='newsarticle'>" + article + "</div>\n";			
+	}
+	
+	// for every article selected, pull its HTML
+	function extractSelected() {
+		var outputHtml = "";
+		var anySelected = false;
+		var selectionCount = 0;
+		var cbs = document.getElementsByClassName(articleCheckboxCssClass);
+		// pass 1: get number of articles selected (need for context in next pass)
+		for (var cb of cbs) {
+			if (cb.checked) {
+				selectionCount++;
+			}
+		}
+		// pass 2: collect articles for new page
+		var thisIndex = 0;
+		for (var cb of cbs) {
+			if (cb.checked) {
+				thisIndex++;  // 1-based for display purposes				
+				outputHtml += addArticle(getUrl(cb.id), thisIndex, selectionCount);
+			}
+		}
+		if (selectionCount > 0) {
+			var pageHtml = buildPage(outputHtml);
+			myWindow = window.open("data:text/html," + encodeURIComponent(pageHtml), "_blank");
+		}
+		else {
+			alert("Please select one or more articles to collect.");
+		}
+	}
+	
+	// select or deselect all based on header checkbox
+	function selectAll(thisCb) {
+		var setToState = thisCb.checked;
+		var cbs = document.getElementsByClassName(articleCheckboxCssClass);
+		for (var cb of cbs) {
+			cb.checked = setToState;
+		}
+		return true;		
+	}
+	
+
+// main entry point
+
+	getJSON(baseUrl + "news-list.json",
+	function(err, data) {
+		if (err != null) {
+			alert("Failed to fetch article list: " + err);
+		}
+		else {
+			populateArticleList(data);
+			document.getElementById("select-all").checked = false;
+		}
+	});
+  
+  </script>
+
+  <h1>NHK-Easyの最近の記事</h1>
+  <p class="explanation">Extract articles from <a href="http://www3.nhk.or.jp/news/easy/">NHK News Web Easy</a> for study</p>
+  <noscript>
+  <p class="explanation">Sorry, this page cannot fetch articles without Javascript enabled.</p> 
+  </noscript>
+  <table id="articles">
+  <thead>
+  <tr>
+  <th><input type="checkbox" id="select-all" onclick="selectAll(this);"></th>
+  <th>Date</th>
+  <th>Title</th>
+  </tr>
+  </thead>
+  <tbody id="articles-body">
+  <!-- empty tbody, populated by populateArticleList() -->
+  </tbody>
+  </table>
+  <div style="text-align: center"> 
+  <button onclick="extractSelected();">New Page with Selected Articles</button>
+  </div>
+</body>
+</html>
