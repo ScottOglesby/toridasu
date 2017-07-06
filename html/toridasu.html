@@ -294,7 +294,10 @@ button:active input.button:active {
 		}
 		if (selectionCount > 0) {
 			var pageHtml = buildPage(outputHtml);
-			myWindow = window.open("data:text/html," + encodeURIComponent(pageHtml), "_blank");
+			var popup = window.open('about:blank');
+			popup.document.write(pageHtml);
+			popup.document.title = "NHK Easy articles via Toridasu";
+			popup.document.close();  // required to stop spinner
 		}
 		else {
 			alert("Please select one or more articles to collect.");
