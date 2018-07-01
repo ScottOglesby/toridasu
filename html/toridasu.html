@@ -249,7 +249,7 @@ button:active input.button:active {
 			var shellDoc = document.implementation.createHTMLDocument("example");
 			var content = req.responseText;
 			shellDoc.documentElement.innerHTML = content;
-			title = shellDoc.getElementById("newstitle").innerHTML;
+			title = shellDoc.getElementsByClassName("article-main__title")[0].innerHTML;
 			// insert "article X of Y" at end of H2 for context
 			var xOfY = "";
 			if (selectionCount > 1) {
@@ -260,7 +260,7 @@ button:active input.button:active {
 			title = title.replace(/ id="newsDate"/g, "");
 			// credit and link to original article		
 			title += "<p>From NHK Easy News; link: <a href='" + url + "'>" + url + "</a></p>";
-			article = shellDoc.getElementById("newsarticle").innerHTML;
+			article = shellDoc.getElementById("js-article-body").innerHTML;
 			// remove <a> and </a> tags (we won't port those over)
 			article = article.replace(/<\/?a[^>]*>/g, "");
 		}
